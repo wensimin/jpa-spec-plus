@@ -49,6 +49,7 @@ class SpecTest {
             )
         )
         assert(dataDao.findBySpec().count() == 3)
+        assert(dataDao.findBySpec(Query()).count() == 3)
         assert(dataDao.findBySpec(Query(id = "2")).count() == 1)
         assert(dataDao.findBySpec(Query(name = "er")).count() == 1)
         assert(dataDao.findBySpec(Query(number = 1000)).count() == 1)
