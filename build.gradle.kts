@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.github.wensimin"
-version = "1.0-SNAPSHOT"
+version = "0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
@@ -20,12 +20,20 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa:2.6.7")
     compileOnly("org.jetbrains.kotlin:kotlin-reflect")
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    //test
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa:2.6.7")
+    testImplementation("org.jetbrains.kotlin:kotlin-reflect")
+    testImplementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-test
+    testImplementation("org.springframework.boot:spring-boot-starter-test:2.6.7")
+    testImplementation("com.h2database:h2:2.1.212")
+    testImplementation(kotlin("test"))
 }
 
-tasks.getByName<Test>("test") {
+
+tasks.test {
     useJUnitPlatform()
 }
-
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
