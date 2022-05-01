@@ -54,8 +54,8 @@ class SpecTest {
         assert(dataDao.findBySpec(Query(number = 1000)).count() == 1)
         assert(dataDao.findBySpec(Query(number = 30)).count() == 2)
         assert(dataDao.findBySpec(Query(name = "er", number = 1000)).isEmpty())
-        dataDao.findPageBySpec(null, PageRequest.of(0, 1)).also {
-            assert(it.totalElements == 3L)
+        dataDao.findPageBySpec(Query(number = 30), PageRequest.of(0, 1)).also {
+            assert(it.totalElements == 2L)
             assert(it.content.size == 1)
         }
 
