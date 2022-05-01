@@ -31,9 +31,10 @@ dependencies {
 }
 
 
-tasks.test {
+tasks.withType<Test> {
     useJUnitPlatform()
 }
+
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {

@@ -1,6 +1,8 @@
 package com.github.wensimin.jpaspecplus
 
 import com.github.wensimin.jpaspecplus.specification.*
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.util.ObjectUtils
@@ -19,7 +21,10 @@ val specificationAdapters = mutableMapOf(
 /**
  * 简写版本findBySpec
  */
-fun <T> JpaSpecificationExecutor<T>.findBySpec(query: Any): MutableList<T> = findAll(query.toSpecification())
+fun <T> JpaSpecificationExecutor<T>.findBySpec(query: Any? = null): MutableList<T> = findAll(query.toSpecification())
+
+fun <T> JpaSpecificationExecutor<T>.findPageBySpec(query: Any? = null, pageRequest: PageRequest): Page<T> =
+    findAll(query.toSpecification(), pageRequest)
 
 
 /**
@@ -28,7 +33,8 @@ fun <T> JpaSpecificationExecutor<T>.findBySpec(query: Any): MutableList<T> = fin
  * 未进行标记的成员会生成 eq 查询规范
  * 空值成员会进行跳过
  */
-fun <T> Any.toSpecification(): Specification<T> {
+fun <T> Any?.toSpecification(): Specification<T>? {
+    if (this == null) return null
     /**
      * 通过当前类的成员以及注解生成查询参数
      */
