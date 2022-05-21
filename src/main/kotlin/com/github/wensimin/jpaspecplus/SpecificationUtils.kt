@@ -11,12 +11,6 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.kotlinProperty
 
-val specificationAdapters = mutableMapOf(
-    Eq::class to EqSpec(),
-    Like::class to LikeSpec(),
-    Greater::class to GreaterSpec(),
-    Less::class to LessSpec()
-)
 
 /**
  * 简写版本findBySpec
@@ -62,7 +56,7 @@ fun <T> Any?.toSpecification(): Specification<T>? {
                 .filter { annotation -> annotation.annotationClass.hasAnnotation<Query>() }.ifEmpty {
                     // 没有任何query注解则默认eq
                     specs.add(
-                        specificationAdapters[Eq::class]!!.predicate(
+                        SpecConfig.specificationAdapters[Eq::class]!!.predicate(
                             join ?: root,
                             criteriaBuilder,
                             it,
@@ -72,7 +66,7 @@ fun <T> Any?.toSpecification(): Specification<T>? {
                     )
                     emptyList()
                 }.forEach { annotation ->
-                    val specAdapter = specificationAdapters[annotation.annotationClass]
+                    val specAdapter = SpecConfig.specificationAdapters[annotation.annotationClass]
                         ?: throw RuntimeException("没有处理方式的query运算符: ${annotation.annotationClass.simpleName}")
                     specs.add(specAdapter.predicate(join ?: root, criteriaBuilder, it, value, annotation))
                 }

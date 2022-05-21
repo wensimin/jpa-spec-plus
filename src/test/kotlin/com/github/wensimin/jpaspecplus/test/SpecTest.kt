@@ -4,6 +4,7 @@ import com.github.wensimin.jpaspecplus.Ignore
 import com.github.wensimin.jpaspecplus.findBySpec
 import com.github.wensimin.jpaspecplus.findPageBySpec
 import com.github.wensimin.jpaspecplus.specification.Greater
+import com.github.wensimin.jpaspecplus.specification.In
 import com.github.wensimin.jpaspecplus.specification.Like
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,6 +21,8 @@ data class Query(
     val name: String? = null,
     @Greater("number")
     val number: Int? = null,
+    @In("number")
+    val numbers: List<Int> = emptyList(),
     @Ignore
     val nothing: String? = null,
 )
@@ -54,6 +57,7 @@ class SpecTest {
         assert(dataDao.findBySpec(Query(name = "er")).count() == 1)
         assert(dataDao.findBySpec(Query(number = 1000)).count() == 1)
         assert(dataDao.findBySpec(Query(number = 30)).count() == 2)
+        assert(dataDao.findBySpec(Query(numbers = listOf(0, 30, 1640))).count() == 2)
         assert(dataDao.findBySpec(Query(name = "er", number = 1000)).isEmpty())
         dataDao.findPageBySpec(Query(number = 30), PageRequest.of(0, 1)).also {
             assert(it.totalElements == 2L)
