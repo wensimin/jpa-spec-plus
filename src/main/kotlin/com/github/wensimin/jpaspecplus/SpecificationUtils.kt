@@ -1,11 +1,14 @@
 package com.github.wensimin.jpaspecplus
 
-import com.github.wensimin.jpaspecplus.specification.*
+import com.github.wensimin.jpaspecplus.specification.Eq
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.util.ObjectUtils
+import javax.persistence.FetchType
+import javax.persistence.ManyToOne
+import javax.persistence.OneToOne
 import javax.persistence.criteria.*
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.javaGetter
@@ -27,17 +30,18 @@ fun <T> JpaSpecificationExecutor<T>.findPageBySpec(query: Any? = null, pageReque
  * 未进行标记的成员会生成 eq 查询规范
  * 空值成员会进行跳过
  */
-fun <T> Any?.toSpecification(): Specification<T>? {
-    if (this == null) return null
+fun <T> Any?.toSpecification(): Specification<T> {
     /**
      * 通过当前类的成员以及注解生成查询参数
      */
-    val fields = this.javaClass.declaredFields
+    val fields = this?.javaClass?.declaredFields
     return Specification { root, query, criteriaBuilder ->
         // add join
-        val joinMap = createJoinMap(root, query)
+        @Suppress("UNCHECKED_CAST")
+        root as From<Any, Any>
+        val joinMap = createJoinMap(root.model.bindableJavaType, root, query)
         val specs = mutableListOf<Predicate>()
-        fields.forEach {
+        fields?.forEach {
             //忽略
             if (it.isAnnotationPresent(Ignore::class.java)) {
                 return@forEach
@@ -49,8 +53,8 @@ fun <T> Any?.toSpecification(): Specification<T>? {
             }
             // 声明为非空过编译
             value!!
-            // 获取该字段是否为join字段
-            val join = it.getAnnotation(JoinPath::class.java)?.let { joinPath -> joinMap[joinPath.attrName] }
+            // 判断是否为join字段
+            val join = it.getAnnotation(JoinPrefix::class.java)?.let { join -> joinMap[join.prefix] }
             it.annotations
                 //过滤非 query 运算符 注解
                 .filter { annotation -> annotation.annotationClass.hasAnnotation<Query>() }.ifEmpty {
@@ -75,28 +79,54 @@ fun <T> Any?.toSpecification(): Specification<T>? {
     }
 }
 
-
-private fun <T> Any.createJoinMap(root: Root<T>, query: CriteriaQuery<*>): MutableMap<String, Path<*>> {
+/**
+ * 通过实体创建join map
+ */
+private fun createJoinMap(
+    entity: Class<*>,
+    root: From<Any, Any>,
+    query: CriteriaQuery<*>,
+    prefix: String = ""
+): MutableMap<String, Path<*>> {
     val joinMap = mutableMapOf<String, Path<*>>()
-    this.javaClass.getAnnotation(Joins::class.java)?.also {
-        it.joins.forEach { fetch ->
-            joinMap[fetch.attrName] = createJoin(root, query, fetch)
+    entity.declaredFields.forEach { field ->
+        // 重复代码,未能找到好的解决方式 原因为注解的非继承问题
+        field.getAnnotation(ManyToOne::class.java)?.let {
+            if (it.fetch == FetchType.EAGER) {
+                val targetClass = if (it.targetEntity == Void::class) field.type else it.targetEntity.java
+                val simpleName = field.name
+                val key = "${prefix}${simpleName}"
+                val from = createJoin(root, query, simpleName)
+                joinMap[key] = from
+                // 递归建立map
+                joinMap.putAll(createJoinMap(targetClass, from, query, "$simpleName."))
+            }
         }
-    }
-    this.javaClass.getAnnotation(Join::class.java)?.also {
-        joinMap[it.attrName] = createJoin(root, query, it)
+        field.getAnnotation(OneToOne::class.java)?.let {
+            if (it.fetch == FetchType.EAGER) {
+                val targetClass = if (it.targetEntity == Void::class) field.type else it.targetEntity.java
+                val simpleName = field.name
+                val key = "${prefix}${simpleName}"
+                val from = createJoin(root, query, simpleName)
+                joinMap[key] = from
+                // 递归建立map
+                joinMap.putAll(createJoinMap(targetClass, from, query, "$simpleName."))
+            }
+        }
     }
     return joinMap
 }
 
-private fun <T> createJoin(root: Root<T>, query: CriteriaQuery<*>, fetch: Join): Path<*> {
+fun createJoin(root: From<Any, Any>, query: CriteriaQuery<*>, targetName: String): From<Any, Any> {
     // 分页使用count查询时会产生fetch错误,所以使用join
     return if (query.resultType.name == "java.lang.Long") {
-        root.join<Any, Any>(fetch.attrName, fetch.joinType)
+        root.join(targetName, JoinType.LEFT)
     } else {
-        root.fetch<Any, Any>(fetch.attrName, fetch.joinType) as Path<*>
+        @Suppress("UNCHECKED_CAST")
+        root.fetch<Any, Any>(targetName, JoinType.LEFT) as From<Any, Any>
     }
 }
+
 
 /**
  * 忽略标记，该字段不会用于查询
@@ -107,36 +137,17 @@ private fun <T> createJoin(root: Root<T>, query: CriteriaQuery<*>, fetch: Join):
 annotation class Ignore
 
 /**
- * 建立连接关系
- * @param attrName 目标实体字段
- * @param joinType join方式
- */
-@Target(AnnotationTarget.CLASS)
-@Retention
-@MustBeDocumented
-annotation class Join(val attrName: String, val joinType: JoinType = JoinType.LEFT)
-
-/**
- * 批量连接关系
- * @see Join
- */
-@Target(AnnotationTarget.CLASS)
-@Retention
-@MustBeDocumented
-annotation class Joins(val joins: Array<Join>)
-
-/**
- * 连接查询的path
- */
-@Target(AnnotationTarget.FIELD)
-@Retention
-@MustBeDocumented
-annotation class JoinPath(val attrName: String)
-
-/**
  * 元注解,表示被该注解注释的注解为查询表达式
  */
 @Target(AnnotationTarget.ANNOTATION_CLASS)
 @Retention
 @MustBeDocumented
 annotation class Query
+
+/**
+ * join字段前缀
+ */
+@Target(AnnotationTarget.FIELD)
+@Retention
+@MustBeDocumented
+annotation class JoinPrefix(val prefix: String = "")
