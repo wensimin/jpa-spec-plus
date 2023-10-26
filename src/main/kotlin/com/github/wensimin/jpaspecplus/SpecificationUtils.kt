@@ -6,10 +6,10 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.util.ObjectUtils
-import javax.persistence.FetchType
-import javax.persistence.ManyToOne
-import javax.persistence.OneToOne
-import javax.persistence.criteria.*
+import jakarta.persistence.FetchType
+import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToOne
+import jakarta.persistence.criteria.*
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.kotlinProperty
